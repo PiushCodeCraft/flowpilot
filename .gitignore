@@ -1,0 +1,46 @@
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test output
+coverage/
+
+# TypeScript build output
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db
+# Prisma AI-generated skills
+server/.agents/
+server/.claude/
+server/.windsurf/
+server/skills-lock.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+
+# Logs and test output
+*.log
+coverage/
+*.tsbuildinfo

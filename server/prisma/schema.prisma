@@ -1,0 +1,165 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum WorkflowStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RequestStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SKIPPED
+}
+
+model User {
+  id           String                 @id @default(cuid())
+  name         String
+  email        String                 @unique
+  passwordHash String
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  memberships  OrganizationMember[]
+  requests     WorkflowRequest[]      @relation("RequestCreator")
+  approvalTasks ApprovalTask[]        @relation("TaskApprover")
+}
+
+model Organization {
+  id          String                 @id @default(cuid())
+  name        String
+  slug        String                 @unique
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  memberships OrganizationMember[]
+  workflows   WorkflowDefinition[]
+  requests    WorkflowRequest[]
+}
+
+model OrganizationMember {
+  id             String           @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrganizationRole @default(EMPLOYEE)
+  joinedAt       DateTime         @default(now())
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, role])
+}
+
+model WorkflowDefinition {
+  id             String              @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  status         WorkflowStatus      @default(DRAFT)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions       WorkflowVersion[]
+  requests       WorkflowRequest[]
+
+  @@index([organizationId, status])
+}
+
+model WorkflowVersion {
+  id                   String             @id @default(cuid())
+  workflowDefinitionId String
+  version              Int
+  definition           Json
+  publishedAt          DateTime?
+  createdAt            DateTime           @default(now())
+  workflowDefinition   WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  requests             WorkflowRequest[]
+
+  @@unique([workflowDefinitionId, version])
+}
+
+model WorkflowRequest {
+  id                 String          @id @default(cuid())
+  organizationId     String
+  workflowDefinitionId String
+  workflowVersionId  String
+  createdById        String
+  title              String
+  formData           Json
+  status             RequestStatus   @default(PENDING)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
+  workflowVersion    WorkflowVersion @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  createdBy          User            @relation("RequestCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvalTasks      ApprovalTask[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+
+  @@index([organizationId, status, createdAt])
+  @@index([createdById, createdAt])
+}
+
+model ApprovalTask {
+  id          String         @id @default(cuid())
+  requestId   String
+  approverId  String
+  stepOrder   Int
+  status      ApprovalStatus @default(PENDING)
+  comment     String?
+  decidedAt   DateTime?
+  createdAt   DateTime       @default(now())
+  request     WorkflowRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver    User           @relation("TaskApprover", fields: [approverId], references: [id], onDelete: Restrict)
+
+  @@unique([requestId, stepOrder])
+  @@index([approverId, status])
+}
+
+model Notification {
+  id        String          @id @default(cuid())
+  userId    String
+  requestId String?
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime        @default(now())
+  request   WorkflowRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model AuditLog {
+  id        String          @id @default(cuid())
+  requestId String
+  actorId   String?
+  action    String
+  details   Json?
+  createdAt DateTime        @default(now())
+  request   WorkflowRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, createdAt])
+}
