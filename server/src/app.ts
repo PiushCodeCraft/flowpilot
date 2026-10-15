@@ -6,6 +6,8 @@ import cookieParser from "cookie-parser";
 import { env } from "./config/env.js";
 import healthRouter from "./routes/health.routes.js";
 import authRouter from "./routes/auth.routes.js";
+import dashboardRouter from "./routes/dashboard.routes.js";
+import workflowRouter from "./routes/workflow.routes.js";
 
 const app = express();
 
@@ -32,6 +34,8 @@ app.get("/", (_req, res) => {
 });
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/dashboard", dashboardRouter);
+app.use("/api/workflows", workflowRouter);
 
 app.use((_req, res) => {
   res.status(404).json({
