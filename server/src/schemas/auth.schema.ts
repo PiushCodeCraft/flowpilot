@@ -18,6 +18,13 @@ export const registerSchema = z.object({
     .string()
     .min(12, "Password must contain at least 12 characters")
     .max(72, "Password must not exceed 72 characters"),
+
+  workspaceName: z
+    .string()
+    .trim()
+    .min(2, "Workspace name must contain at least 2 characters")
+    .max(100, "Workspace name must not exceed 100 characters")
+    .optional(),
 });
 
 export const loginSchema = z.object({

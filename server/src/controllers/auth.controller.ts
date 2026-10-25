@@ -1,3 +1,4 @@
+
 import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -52,7 +53,7 @@ export async function register(
     });
   }
 
-  const { name, email, password } = parsed.data;
+  const { name, email, password, workspaceName } = parsed.data;
 
   try {
     const existingUser = await prisma.user.findUnique({
@@ -69,18 +70,61 @@ export async function register(
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-      },
+    // Create the user, workspace, and owner membership atomically.
+    const { user, organization } = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          systemRole: "USER",
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+      });
+
+      const defaultWorkspaceName =
+        workspaceName?.trim() || `${name.trim()}'s Workspace`;
+
+      const baseSlug =
+        defaultWorkspaceName
+          .normalize("NFKD")
+          .toLowerCase()
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 50) || "workspace";
+
+      // User IDs make generated slugs unique across registrations.
+      const createdOrg = await tx.organization.create({
+        data: {
+          name: defaultWorkspaceName,
+          slug: `${baseSlug}-${createdUser.id}`,
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          createdAt: true,
+        },
+      });
+
+      await tx.organizationMember.create({
+        data: {
+          userId: createdUser.id,
+          organizationId: createdOrg.id,
+          role: "OWNER",
+        },
+      });
+
+      return {
+        user: createdUser,
+        organization: createdOrg,
+      };
     });
 
     const token = createToken(user.id);
@@ -88,11 +132,14 @@ export async function register(
 
     return res.status(201).json({
       success: true,
-      message: "Account created successfully",
-      user,
+      message: "Account and workspace created successfully",
+      user: {
+        ...user,
+        organization,
+      },
     });
   } catch (error) {
-    // Handle a duplicate email if two requests race.
+    // Handle duplicate email if simultaneous requests race.
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
@@ -134,9 +181,23 @@ export async function login(
   try {
     const user = await prisma.user.findUnique({
       where: { email },
+      include: {
+        memberships: {
+          select: {
+            id: true,
+            role: true,
+            organization: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+      },
     });
 
-    // Use the same response for an unknown email and a wrong password.
     if (
       !user ||
       !(await bcrypt.compare(password, user.passwordHash))
@@ -157,6 +218,7 @@ export async function login(
         id: user.id,
         name: user.name,
         email: user.email,
+        memberships: user.memberships,
       },
     });
   } catch (error) {
@@ -192,6 +254,19 @@ export async function getCurrentUser(
         name: true,
         email: true,
         createdAt: true,
+        memberships: {
+          select: {
+            id: true,
+            role: true,
+            organization: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
       },
     });
 

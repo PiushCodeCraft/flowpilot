@@ -8,6 +8,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum SystemRole {
+  ADMIN
+  USER
+}
+
 enum OrganizationRole {
   OWNER
   ADMIN
@@ -37,15 +42,16 @@ enum ApprovalStatus {
 }
 
 model User {
-  id           String                 @id @default(cuid())
-  name         String
-  email        String                 @unique
-  passwordHash String
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
-  memberships  OrganizationMember[]
-  requests     WorkflowRequest[]      @relation("RequestCreator")
-  approvalTasks ApprovalTask[]        @relation("TaskApprover")
+  id            String                 @id @default(cuid())
+  name          String
+  email         String                 @unique
+  passwordHash  String
+  systemRole    SystemRole             @default(USER)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  memberships   OrganizationMember[]
+  requests      WorkflowRequest[]      @relation("RequestCreator")
+  approvalTasks ApprovalTask[]         @relation("TaskApprover")
 }
 
 model Organization {
@@ -101,39 +107,39 @@ model WorkflowVersion {
 }
 
 model WorkflowRequest {
-  id                 String          @id @default(cuid())
-  organizationId     String
+  id                  String           @id @default(cuid())
+  organizationId      String
   workflowDefinitionId String
-  workflowVersionId  String
-  createdById        String
-  title              String
-  formData           Json
-  status             RequestStatus   @default(PENDING)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
-  workflowVersion    WorkflowVersion @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
-  createdBy          User            @relation("RequestCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  approvalTasks      ApprovalTask[]
-  notifications      Notification[]
-  auditLogs          AuditLog[]
+  workflowVersionId   String
+  createdById         String
+  title               String
+  formData            Json
+  status              RequestStatus    @default(PENDING)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  organization        Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowDefinition  WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
+  workflowVersion     WorkflowVersion  @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  createdBy           User             @relation("RequestCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvalTasks       ApprovalTask[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
 
   @@index([organizationId, status, createdAt])
   @@index([createdById, createdAt])
 }
 
 model ApprovalTask {
-  id          String         @id @default(cuid())
-  requestId   String
-  approverId  String
-  stepOrder   Int
-  status      ApprovalStatus @default(PENDING)
-  comment     String?
-  decidedAt   DateTime?
-  createdAt   DateTime       @default(now())
-  request     WorkflowRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  approver    User           @relation("TaskApprover", fields: [approverId], references: [id], onDelete: Restrict)
+  id        String         @id @default(cuid())
+  requestId String
+  approverId String
+  stepOrder Int
+  status    ApprovalStatus @default(PENDING)
+  comment   String?
+  decidedAt DateTime?
+  createdAt DateTime       @default(now())
+  request   WorkflowRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver  User            @relation("TaskApprover", fields: [approverId], references: [id], onDelete: Restrict)
 
   @@unique([requestId, stepOrder])
   @@index([approverId, status])

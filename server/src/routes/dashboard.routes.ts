@@ -7,7 +7,7 @@ const dashboardRouter = Router();
 dashboardRouter.use(requireAuth);
 
 // GET /api/dashboard/summary
-dashboardRouter.get("/summary", async (_req, res) => {
+dashboardRouter.get("/summary", async (req, res) => {
   try {
     const userId = res.locals.userId as string;
 
@@ -34,6 +34,19 @@ dashboardRouter.get("/summary", async (_req, res) => {
       });
     }
 
+    const requestedOrgId =
+      (req.query.organizationId as string | undefined) ||
+      (req.headers["x-organization-id"] as string | undefined);
+
+    if (requestedOrgId && !organizationIds.includes(requestedOrgId)) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have access to this organization",
+      });
+    }
+
+    const targetOrgIds = requestedOrgId ? [requestedOrgId] : organizationIds;
+
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
@@ -46,12 +59,12 @@ dashboardRouter.get("/summary", async (_req, res) => {
       recentRequests,
     ] = await Promise.all([
       prisma.workflowDefinition.count({
-        where: { organizationId: { in: organizationIds } },
+        where: { organizationId: { in: targetOrgIds } },
       }),
 
       prisma.workflowRequest.count({
         where: {
-          organizationId: { in: organizationIds },
+          organizationId: { in: targetOrgIds },
           status: { in: ["PENDING", "IN_PROGRESS"] },
         },
       }),
@@ -61,14 +74,14 @@ dashboardRouter.get("/summary", async (_req, res) => {
           approverId: userId,
           status: "PENDING",
           request: {
-            organizationId: { in: organizationIds },
+            organizationId: { in: targetOrgIds },
           },
         },
       }),
 
       prisma.workflowRequest.count({
         where: {
-          organizationId: { in: organizationIds },
+          organizationId: { in: targetOrgIds },
           status: "APPROVED",
           updatedAt: { gte: monthStart },
         },
@@ -76,7 +89,7 @@ dashboardRouter.get("/summary", async (_req, res) => {
 
       prisma.workflowRequest.findMany({
         where: {
-          organizationId: { in: organizationIds },
+          organizationId: { in: targetOrgIds },
         },
         orderBy: { updatedAt: "desc" },
         take: 5,
