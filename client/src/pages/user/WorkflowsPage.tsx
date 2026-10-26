@@ -16,9 +16,11 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
+
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+
 import { apiRequest } from "../../services/api";
 
 interface Workflow {
@@ -29,7 +31,9 @@ interface Workflow {
     status: string;
     createdAt: string;
     updatedAt: string;
-    _count: { requests: number };
+    _count: {
+        requests: number;
+    };
 }
 
 interface WorkflowsResponse {
@@ -58,11 +62,15 @@ export default function WorkflowsPage() {
         setError("");
 
         try {
-            const response = await apiRequest<WorkflowsResponse>("/api/workflows");
+            const response =
+                await apiRequest<WorkflowsResponse>("/api/workflows");
+
             setWorkflows(response.data);
         } catch (err) {
             setError(
-                err instanceof Error ? err.message : "Unable to load workflows.",
+                err instanceof Error
+                    ? err.message
+                    : "Unable to load workflows.",
             );
         } finally {
             setLoading(false);
@@ -70,8 +78,37 @@ export default function WorkflowsPage() {
     }, []);
 
     useEffect(() => {
-        void loadWorkflows();
-    }, [loadWorkflows]);
+        let active = true;
+
+        const fetchWorkflows = async () => {
+            try {
+                const response =
+                    await apiRequest<WorkflowsResponse>("/api/workflows");
+
+                if (active) {
+                    setWorkflows(response.data);
+                }
+            } catch (err) {
+                if (active) {
+                    setError(
+                        err instanceof Error
+                            ? err.message
+                            : "Unable to load workflows.",
+                    );
+                }
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        void fetchWorkflows();
+
+        return () => {
+            active = false;
+        };
+    }, []);
 
     function openCreateDialog() {
         setName("");
@@ -105,20 +142,23 @@ export default function WorkflowsPage() {
         setNotice("");
 
         try {
-            const response = await apiRequest<CreateWorkflowResponse>(
-                "/api/workflows",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        name: trimmedName,
-                        description: trimmedDescription || undefined,
-                    }),
-                },
-            );
+            const response =
+                await apiRequest<CreateWorkflowResponse>(
+                    "/api/workflows",
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            name: trimmedName,
+                            description: trimmedDescription || undefined,
+                        }),
+                    },
+                );
 
             setWorkflows((current) => [
                 response.data,
-                ...current.filter((workflow) => workflow.id !== response.data.id),
+                ...current.filter(
+                    (workflow) => workflow.id !== response.data.id,
+                ),
             ]);
 
             setDialogOpen(false);
@@ -127,7 +167,9 @@ export default function WorkflowsPage() {
             setNotice("Workflow created successfully.");
         } catch (err) {
             setError(
-                err instanceof Error ? err.message : "Unable to create workflow.",
+                err instanceof Error
+                    ? err.message
+                    : "Unable to create workflow.",
             );
         } finally {
             setSaving(false);
@@ -147,9 +189,13 @@ export default function WorkflowsPage() {
                 }}
             >
                 <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+                    <Typography
+                        variant="h4"
+                        sx={{ fontWeight: 800, mb: 1 }}
+                    >
                         Workflows
                     </Typography>
+
                     <Typography color="text.secondary">
                         View and manage your organization's workflows.
                     </Typography>
@@ -164,6 +210,7 @@ export default function WorkflowsPage() {
                     >
                         Refresh
                     </Button>
+
                     <Button
                         variant="contained"
                         startIcon={<AddRoundedIcon />}
@@ -175,19 +222,33 @@ export default function WorkflowsPage() {
             </Box>
 
             {error && (
-                <Alert severity="error" onClose={() => setError("")} sx={{ mb: 3 }}>
+                <Alert
+                    severity="error"
+                    onClose={() => setError("")}
+                    sx={{ mb: 3 }}
+                >
                     {error}
                 </Alert>
             )}
 
             {notice && (
-                <Alert severity="success" onClose={() => setNotice("")} sx={{ mb: 3 }}>
+                <Alert
+                    severity="success"
+                    onClose={() => setNotice("")}
+                    sx={{ mb: 3 }}
+                >
                     {notice}
                 </Alert>
             )}
 
             {loading ? (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+                <Box
+                    sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        py: 8,
+                    }}
+                >
                     <CircularProgress />
                 </Box>
             ) : workflows.length === 0 ? (
@@ -203,14 +264,28 @@ export default function WorkflowsPage() {
                 >
                     <CardContent>
                         <AccountTreeRoundedIcon
-                            sx={{ fontSize: 52, color: "text.secondary", mb: 2 }}
+                            sx={{
+                                fontSize: 52,
+                                color: "text.secondary",
+                                mb: 2,
+                            }}
                         />
-                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+
+                        <Typography
+                            variant="h6"
+                            sx={{ fontWeight: 700, mb: 1 }}
+                        >
                             No workflows yet
                         </Typography>
-                        <Typography color="text.secondary" sx={{ mb: 3 }}>
-                            Create your first workflow to start organizing and tracking work.
+
+                        <Typography
+                            color="text.secondary"
+                            sx={{ mb: 3 }}
+                        >
+                            Create your first workflow to start organizing
+                            and tracking work.
                         </Typography>
+
                         <Button
                             variant="contained"
                             startIcon={<AddRoundedIcon />}
@@ -254,26 +329,37 @@ export default function WorkflowsPage() {
                                     }}
                                 >
                                     <AccountTreeRoundedIcon color="primary" />
+
                                     <Chip
                                         size="small"
                                         label={workflow.status.replace(/_/g, " ")}
                                         color={
-                                            workflow.status === "ACTIVE" ? "success" : "default"
+                                            workflow.status === "ACTIVE"
+                                                ? "success"
+                                                : "default"
                                         }
                                         variant="outlined"
                                     />
                                 </Box>
 
-                                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                                <Typography
+                                    variant="h6"
+                                    sx={{ fontWeight: 700, mb: 1 }}
+                                >
                                     {workflow.name}
                                 </Typography>
 
                                 <Typography
                                     color="text.secondary"
                                     variant="body2"
-                                    sx={{ minHeight: 40, mb: 3, overflowWrap: "anywhere" }}
+                                    sx={{
+                                        minHeight: 40,
+                                        mb: 3,
+                                        overflowWrap: "anywhere",
+                                    }}
                                 >
-                                    {workflow.description || "No description provided."}
+                                    {workflow.description ||
+                                        "No description provided."}
                                 </Typography>
 
                                 <Box
@@ -284,10 +370,17 @@ export default function WorkflowsPage() {
                                         justifyContent: "space-between",
                                     }}
                                 >
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
                                         Requests
                                     </Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+
+                                    <Typography
+                                        variant="body2"
+                                        sx={{ fontWeight: 700 }}
+                                    >
                                         {workflow._count.requests}
                                     </Typography>
                                 </Box>
@@ -300,12 +393,16 @@ export default function WorkflowsPage() {
             <Dialog
                 open={dialogOpen}
                 onClose={() => {
-                    if (!saving) setDialogOpen(false);
+                    if (!saving) {
+                        setDialogOpen(false);
+                    }
                 }}
                 fullWidth
                 maxWidth="sm"
             >
-                <DialogTitle sx={{ fontWeight: 800 }}>Create Workflow</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 800 }}>
+                    Create Workflow
+                </DialogTitle>
 
                 <DialogContent>
                     <Stack spacing={2.5} sx={{ pt: 1 }}>
@@ -316,25 +413,32 @@ export default function WorkflowsPage() {
                             required
                             fullWidth
                             autoFocus
+                            placeholder="e.g. Employee Onboarding"
                             slotProps={{
                                 htmlInput: { maxLength: 120 },
-                            }} placeholder="e.g. Employee Onboarding"
+                            }}
                         />
 
                         <TextField
                             label="Description"
                             value={description}
-                            onChange={(event) => setDescription(event.target.value)}
+                            onChange={(event) =>
+                                setDescription(event.target.value)
+                            }
                             fullWidth
                             multiline
                             minRows={3}
+                            placeholder="Describe what this workflow is for..."
                             slotProps={{
                                 htmlInput: { maxLength: 2000 },
-                            }} placeholder="Describe what this workflow is for..."
+                            }}
                         />
 
                         {error && (
-                            <Alert severity="error" onClose={() => setError("")}>
+                            <Alert
+                                severity="error"
+                                onClose={() => setError("")}
+                            >
                                 {error}
                             </Alert>
                         )}
@@ -348,6 +452,7 @@ export default function WorkflowsPage() {
                     >
                         Cancel
                     </Button>
+
                     <Button
                         variant="contained"
                         onClick={() => void handleCreateWorkflow()}

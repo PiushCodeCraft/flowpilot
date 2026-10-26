@@ -5,15 +5,7 @@ import AdminRoute from "../components/AdminRoute";
 import DashboardLayout from "../layouts/DashboardLayout";
 import OverviewPage from "../pages/user/OverviewPage";
 import WorkflowsPage from "../pages/user/WorkflowsPage";
-
-function Placeholder({ title }: { title: string }) {
-    return (
-        <div>
-            <h1>{title}</h1>
-            <p>This section is being developed.</p>
-        </div>
-    );
-}
+import RoutePlaceholder from "../components/RoutePlaceholder";
 
 export const router = createBrowserRouter([
     {
@@ -35,17 +27,20 @@ export const router = createBrowserRouter([
                 element: <DashboardLayout />,
                 children: [
                     { path: "/overview", element: <OverviewPage /> },
-                    { path: "/workflows", element: <WorkflowsPage /> }, 
-                    { path: "/requests", element: <Placeholder title="Requests" /> },
-                    { path: "/approvals", element: <Placeholder title="Approvals" /> },
-                    { path: "/settings", element: <Placeholder title="Settings" /> },
+                    { path: "/workflows", element: <WorkflowsPage /> },
+                    { path: "/requests", element: <RoutePlaceholder title="Requests" /> },
+                    { path: "/approvals", element: <RoutePlaceholder title="Approvals" /> },
+                    { path: "/settings", element: <RoutePlaceholder title="Settings" /> },
                     {
                         element: <AdminRoute />,
                         children: [
-                            { path: "/admin", element: <Placeholder title="Admin Dashboard" /> },
+                            {
+                                path: "/admin",
+                                element: <RoutePlaceholder title="Admin Dashboard" />,
+                            },
                             {
                                 path: "/admin/users",
-                                element: <Placeholder title="User Management" />,
+                                element: <RoutePlaceholder title="User Management" />,
                             },
                         ],
                     },
@@ -55,6 +50,6 @@ export const router = createBrowserRouter([
     },
     {
         path: "*",
-        element: <Placeholder title="Page not found" />,
+        element: <RoutePlaceholder title="Page not found" />,
     },
 ]);
